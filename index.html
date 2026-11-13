@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="The State of Shawarmany's newspaper">
+<meta name="theme-color" content="#050403">
+<link rel="icon" href="data:,">
+<title>ShawarmanyPost</title>
+
+<!--
+  ShawarmanyPost — Phase 0: signature introduction + personalized edition.
+  Single self-contained file. Design tokens, section names, post data, games and footer copy
+  are taken from the cherriae/shawarmanypost repo (Base.astro, global.css, lib/posts.ts,
+  lib/games.ts, src/content/posts/*.md).
+
+  Routes (hash based, so the file works on its own):
+    #/               home: greeting + story selector      (Astro: /)
+    #/stories        every story, as an index             (Astro: n/a)
+    #/government     section pages                        (Astro: /government/ etc.)
+    #/games          games                                (Astro: /games/)
+    #/post/<id>      article                              (Astro: /posts/<id>/)
+
+  To publish the real "2026 Class Election" story: find its entry in STORIES below, delete
+  `pending: true`, and fill in subtitle, author, date, category, type and body.
+-->
+
+<script>
+  // Runs before first paint so returning visitors never flash the dark intro.
+  try { document.documentElement.dataset.state = localStorage.getItem('snyp.name') ? 'paper' : 'intro'; }
+  catch (e) { document.documentElement.dataset.state = 'intro'; }
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&family=Public+Sans:wght@400..700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --paper:#FAF7F2;--ink:#1A1714;--muted:#5C564E;--rule:#D8D1C5;--accent:#9E1B1E;--tint:#F1E4E0;
+  --warm:#F3EADB;--night:#050403;
+  --serif:'Newsreader','Newsreader Variable',Georgia,'Times New Roman',serif;
+  --sans:'Public Sans','Public Sans Variable',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --ease:cubic-bezier(.2,.7,.2,1);
+}
+*{box-sizing:border-box}
+html{background:var(--night);-webkit-text-size-adjust:100%}
+html[data-state=paper]{background:var(--paper)}
+html[data-state=opening]{overflow:hidden}
+body{margin:0;color:var(--ink);font:1.125rem/1.6 var(--serif)}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button{font:inherit}
+.sr{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* ---------- state switching ---------- */
+#intro{display:none}
+#paper{display:none}
+html:not([data-state]) #paper{display:block}
+html[data-state=intro] #intro,html[data-state=cover] #intro,html[data-state=opening] #intro{display:block}
+html[data-state=paper] #paper,html[data-state=cover] #paper,html[data-state=opening] #paper{display:block}
+
+/* =====================================================
+   INTRO
+   ===================================================== */
+#intro{position:fixed;inset:0;z-index:100;color:var(--warm);--hd:1.25s}
+.half{position:fixed;left:0;right:0;height:50.6%;background:var(--night);z-index:1;transition:transform var(--hd) cubic-bezier(.76,0,.24,1)}
+.half.t{top:0}.half.b{bottom:0}
+#intro.is-open .half.t{transform:translateY(-101%)}
+#intro.is-open .half.b{transform:translateY(101%)}
+#intro.snap .half,#intro.snap .stage{transition:none!important}
+.seam{position:fixed;left:0;right:0;top:50%;height:1px;z-index:3;background:var(--warm);box-shadow:0 0 22px 2px rgba(243,214,170,.55);opacity:0;transform:scaleX(0);pointer-events:none}
+#intro.leaving .seam{animation:seam .95s ease both}
+@keyframes seam{0%{opacity:1;transform:scaleX(0)}55%{opacity:1;transform:scaleX(1)}100%{opacity:0;transform:scaleX(1)}}
+
+.stage{position:relative;z-index:2;min-height:100vh;min-height:100dvh;display:grid;grid-template-rows:1fr auto 1fr;justify-items:center;padding:24px;transition:opacity .6s ease}
+.stage::before{content:'';position:absolute;inset:0;background:radial-gradient(55% 40% at 50% 50%,rgba(243,214,170,.07),transparent 70%);pointer-events:none}
+#intro.leaving .stage{opacity:0}
+.line{grid-row:2;align-self:center;position:relative;margin:0;width:min(94vw,1100px);text-align:center;font:300 clamp(1.9rem,6.2vw,4.1rem)/1.22 var(--serif);letter-spacing:.012em;text-wrap:balance;color:var(--warm)}
+.w{white-space:nowrap}
+.c{opacity:0;transition:opacity .08s linear}
+.c.on{opacity:1}
+.cur{display:inline-block;width:0;position:relative;height:1em;vertical-align:baseline}
+.cur::before{content:'';position:absolute;left:.09em;top:.2em;width:.045em;height:.92em;background:var(--warm);animation:blink 1.05s steps(1) infinite}
+.line.typing .cur::before{animation:none}
+@keyframes blink{50%{opacity:0}}
+
+.formwrap{grid-row:3;align-self:start;width:min(92vw,520px);margin-top:clamp(20px,4.5vh,44px);opacity:0;transform:translateY(14px);transition:opacity .9s ease,transform .9s var(--ease);pointer-events:none}
+.formwrap.show{opacity:1;transform:none;pointer-events:auto}
+.bubble{display:flex;align-items:center;gap:6px;padding:6px 6px 6px 26px;border-radius:999px;background:rgba(243,234,219,.06);border:1px solid rgba(243,234,219,.26);transition:border-color .25s,box-shadow .25s,background .25s}
+.bubble:hover{border-color:rgba(243,234,219,.5);background:rgba(243,234,219,.09)}
+.bubble:focus-within{border-color:var(--warm);background:rgba(243,234,219,.1);box-shadow:0 0 0 4px rgba(158,27,30,.38),0 0 44px rgba(243,214,170,.1)}
+.bubble.shake{animation:shake .45s ease}
+@keyframes shake{20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(3px)}}
+.bubble input{flex:1;min-width:0;height:52px;background:transparent;border:0;outline:0;color:var(--warm);font:400 1.3rem var(--serif);letter-spacing:.01em}
+.bubble input::placeholder{color:rgba(243,234,219,.56)}
+.go{flex:none;width:48px;height:48px;border-radius:50%;border:0;background:var(--accent);color:#fff;display:grid;place-items:center;cursor:pointer;transition:background .2s,transform .2s,opacity .2s}
+.go svg{width:22px;height:22px;transition:transform .25s}
+.go:hover{background:#b5242a}.go:hover svg{transform:translateX(3px)}
+.go:active{transform:scale(.94)}
+.go:focus-visible{outline:2px solid var(--warm);outline-offset:3px}
+.bubble.blank .go{opacity:.55}
+.msg{min-height:1.5em;margin:10px 0 0;text-align:center;font:.9rem var(--sans);color:#f0b9b2}
+.hint{margin:2px 0 0;text-align:center;font:.72rem var(--sans);letter-spacing:.16em;text-transform:uppercase;color:rgba(243,234,219,.4)}
+.back{position:absolute;bottom:max(22px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:4;background:none;border:0;color:rgba(243,234,219,.55);font:.8rem var(--sans);letter-spacing:.08em;text-transform:uppercase;cursor:pointer;padding:12px 16px;transition:color .2s}
+.back:hover{color:var(--warm)}
+.back:focus-visible{outline:2px solid var(--warm)}
+.back[hidden]{display:none}
+
+/* =====================================================
+   NEWSPAPER
+   ===================================================== */
+#paper{background:var(--paper);min-height:100vh;transform-origin:50% 0}
+#paper.unfold{animation:unfold 1.5s var(--ease) .45s backwards}
+#paper.unfold.quick{animation-duration:.7s;animation-delay:.1s}
+@keyframes unfold{from{opacity:0;transform:perspective(1500px) rotateX(-13deg) scale(.95);filter:brightness(.35)}to{opacity:1;transform:none;filter:none}}
+
+.wrap{max-width:1200px;margin:0 auto;padding:0 16px}
+.skip{position:absolute;left:-999px}.skip:focus{left:8px;top:8px;background:var(--paper);padding:8px;z-index:200}
+
+.edbar{border-bottom:1px solid var(--rule);font:.74rem var(--sans);color:var(--muted)}
+.edbar .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:2px 16px;min-height:40px}
+.edbar p{margin:0;letter-spacing:.06em;text-transform:uppercase}
+.edbar .who strong{color:var(--ink)}
+.edbar .acts{display:flex;gap:4px}
+.link{background:none;border:0;padding:0 8px;min-height:40px;font:600 .74rem var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--ink);cursor:pointer;text-decoration:underline;text-decoration-color:var(--rule);text-underline-offset:4px;transition:text-decoration-color .15s,color .15s}
+.link:hover{color:var(--accent);text-decoration-color:var(--accent)}
+
+.mast{text-align:center;padding:20px 16px 12px}
+.word{font:600 clamp(2.2rem,8vw,4.4rem)/1 var(--serif);letter-spacing:-.02em;margin:0}.word a{text-decoration:none}
+.tag{font:.75rem var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:.5rem 0 0}
+nav{border-block:3px double var(--ink)}
+nav ul{display:flex;gap:0 24px;list-style:none;margin:0;padding:0;overflow-x:auto;justify-content:center;font:600 .8rem var(--sans);text-transform:uppercase;letter-spacing:.06em}
+@media(max-width:759px){nav ul{justify-content:flex-start}}
+nav a{display:flex;align-items:center;min-height:44px;padding:0 4px;text-decoration:none;white-space:nowrap;border-bottom:2px solid transparent;transition:border-color .15s}
+nav a:hover,nav a[aria-current]{border-bottom-color:var(--accent)}
+main{padding-block:28px 56px;outline:0}
+footer{border-top:1px solid var(--rule);padding-block:20px 40px;font:.8rem var(--sans);color:var(--muted)}footer p{margin:.3em 0}
+
+.kicker{font:600 .72rem var(--sans);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0}.kicker.op{color:var(--accent)}
+.badge{margin-left:8px;border:1px solid var(--accent);color:var(--accent);padding:0 6px;font-size:.62rem}
+.sub,.dek{color:var(--muted);margin:.3em 0}.meta{font:.8rem var(--sans);color:var(--muted);margin:.4em 0}
+.sec{font:600 .8rem var(--sans);letter-spacing:.12em;text-transform:uppercase;border-top:3px double var(--ink);padding-top:10px;margin:0 0 16px}
+.sech{font:600 clamp(2rem,5vw,3rem)/1.1 var(--serif);margin:0 0 .2em}
+.it{font-style:italic}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 .85rem var(--sans);min-height:44px;padding:0 16px;border:1px solid var(--ink);background:var(--paper);color:var(--ink);text-decoration:none;cursor:pointer;transition:background .15s,color .15s}
+.btn:hover{background:var(--ink);color:var(--paper)}.btn:active{transform:translateY(1px)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}.btn.pri:hover{background:#7d1518}
+.banner{background:var(--tint);border:1px solid var(--accent);padding:8px 12px;font:.85rem var(--sans);margin:0 0 20px}
+.empty{border:1px dashed var(--muted);padding:40px 20px;text-align:center}.empty h2{font-family:var(--serif);margin:0 0 .3em}
+
+/* ----- home: greeting + selector ----- */
+.hello{padding:14px 0 30px;border-bottom:1px solid var(--rule);margin-bottom:34px}
+.greet{font:600 clamp(2.7rem,10vw,6.4rem)/1.08 var(--serif);letter-spacing:-.03em;margin:.12em 0 .1em;overflow-wrap:anywhere;outline:0}
+.greet .nm{color:var(--accent);font-style:italic;font-weight:500}
+.from{font:italic 400 clamp(1.1rem,2.4vw,1.4rem)/1.4 var(--serif);color:var(--muted);margin:0}
+.q{font:italic 500 clamp(1.7rem,4.4vw,2.7rem)/1.15 var(--serif);margin:0 0 18px}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 22px}
+.chip{min-height:40px;padding:0 16px;border:1px solid var(--ink);background:transparent;color:var(--ink);font:600 .78rem var(--sans);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border-radius:999px;transition:background .15s,color .15s,transform .15s}
+.chip:hover{background:var(--tint)}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+.chip.surprise{margin-left:auto;border-color:var(--accent);color:var(--accent)}
+.chip.surprise:hover{background:var(--accent);color:#fff}
+.resume{display:inline-flex;gap:8px;align-items:baseline;font:.9rem var(--sans);margin:0 0 22px;padding:8px 14px;background:var(--tint);border-left:3px solid var(--accent);text-decoration:none;max-width:100%}
+.resume strong{font-family:var(--serif);font-size:1.05rem}.resume:hover strong{text-decoration:underline}
+
+.sgrid{list-style:none;margin:0 0 48px;padding:0;display:grid;gap:22px;grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+.scard{position:relative;display:flex;flex-direction:column;background:#fff;border:1px solid var(--rule);transition:transform .25s var(--ease),box-shadow .25s,border-color .25s}
+.scard:hover{transform:translateY(-4px);box-shadow:0 14px 34px -14px rgba(26,23,20,.35);border-color:var(--ink)}
+.scard a{text-decoration:none}
+.scard a::after{content:'';position:absolute;inset:0;z-index:1}
+.scard a:focus-visible{outline:0}
+.scard a:focus-visible::after{outline:3px solid var(--accent);outline-offset:3px}
+.plate{position:relative;overflow:hidden;aspect-ratio:3/2;border-bottom:1px solid var(--rule);display:grid;place-items:center}
+.plate::before{content:'';position:absolute;inset:0;transition:transform .5s var(--ease)}
+.scard:hover .plate::before{transform:scale(1.06)}
+.p-gov{background:var(--paper)}.p-gov::before{background:repeating-linear-gradient(90deg,var(--ink) 0 2px,transparent 2px 15px);opacity:.16}
+.p-par{background:var(--tint)}.p-par::before{background:radial-gradient(var(--accent) 1.6px,transparent 1.8px) 0 0/16px 16px;opacity:.5}
+.p-op{background:var(--paper)}.p-op::before{background:repeating-linear-gradient(135deg,var(--accent) 0 2px,transparent 2px 13px);opacity:.28}
+.p-feat{background:var(--ink)}.p-feat::before{background:radial-gradient(60% 70% at 70% 30%,rgba(158,27,30,.55),transparent 70%)}
+.plate .big{position:relative;font:700 clamp(4.2rem,11vw,7.4rem)/1 var(--serif);letter-spacing:-.05em;color:transparent;-webkit-text-stroke:2px var(--warm);transition:transform .5s var(--ease)}
+.scard:hover .plate .big{transform:scale(1.05) rotate(-1.5deg)}
+.sbody{display:flex;flex-direction:column;flex:1;padding:16px 18px 18px}
+.scard h3{font:600 1.38rem/1.2 var(--serif);margin:.25em 0 .1em}
+.scard h3 a{background:linear-gradient(var(--accent),var(--accent)) 0 100%/0 2px no-repeat;transition:background-size .25s}
+.scard:hover h3 a{background-size:100% 2px}
+.scard .sub{font-size:1rem;flex:1}
+.smeta{display:flex;flex-wrap:wrap;gap:4px 14px;font:.78rem var(--sans);color:var(--muted);margin-top:10px}
+.open{margin-top:12px;font:600 .78rem var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);display:inline-flex;gap:6px;transition:gap .2s}
+.scard:hover .open{gap:12px}
+.scard.feat{grid-column:1/-1;flex-direction:row;border-width:2px;border-color:var(--ink)}
+.scard.feat .plate{flex:1 1 46%;aspect-ratio:auto;min-height:260px;border-bottom:0;border-right:2px solid var(--ink)}
+.scard.feat .sbody{flex:1 1 54%;padding:26px 30px 28px;justify-content:center}
+.scard.feat h3{font-size:clamp(1.9rem,4vw,3rem);line-height:1.08}
+.scard.feat .sub{flex:0;font-size:1.15rem}
+.flag{display:inline-block;font:700 .66rem var(--sans);letter-spacing:.14em;text-transform:uppercase;background:var(--accent);color:#fff;padding:3px 9px;margin-bottom:8px;align-self:flex-start}
+@media(max-width:699px){.scard.feat{flex-direction:column}.scard.feat .plate{min-height:190px;border-right:0;border-bottom:2px solid var(--ink)}.scard.feat .sbody{padding:18px}.chip.surprise{margin-left:0}}
+.sgrid.redraw .scard{animation:pop .45s var(--ease) both;animation-delay:calc(var(--i)*45ms)}
+@keyframes pop{from{opacity:0;transform:translateY(14px)}}
+
+.cols2{display:grid;gap:40px;grid-template-columns:1fr}
+.gtiles{list-style:none;padding:0;margin:0 0 32px;display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.gt{border:1px solid var(--ink);padding:16px;background:#fff}.gt h2,.gt h3{font:600 1.3rem var(--serif);margin:0}.gt p{margin:.3em 0 .8em}
+.gt.soon{border-style:dashed;border-color:var(--muted);color:var(--muted);background:transparent}
+.how{border:1px solid var(--rule);padding:8px 14px;margin:8px 0 16px;font-size:.95rem}.how summary{font:600 .85rem var(--sans);cursor:pointer;min-height:32px}
+
+/* ----- all stories index ----- */
+.index{list-style:none;margin:20px 0 0;padding:0;counter-reset:n}
+.index li{position:relative;display:grid;grid-template-columns:52px 1fr;gap:0 12px;padding:18px 0;border-bottom:1px solid var(--rule);counter-increment:n;transition:background .2s,padding .2s}
+.index li::before{content:counter(n,decimal-leading-zero);font:600 1.5rem/1.2 var(--serif);color:var(--accent)}
+.index li:hover{background:var(--tint);padding-left:10px}
+.index h2{font:600 1.5rem/1.2 var(--serif);margin:.15em 0}
+.index a{text-decoration:none}.index a::after{content:'';position:absolute;inset:0}
+.index a:focus-visible{outline:0}.index a:focus-visible::after{outline:3px solid var(--accent)}
+.index li:hover h2{text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:4px}
+
+/* ----- article ----- */
+#progress{position:fixed;top:0;left:0;right:0;height:3px;background:var(--accent);transform:scaleX(0);transform-origin:0 50%;z-index:90;opacity:0;transition:opacity .2s}
+#progress.on{opacity:1}
+.art{max-width:900px;margin:0 auto}
+.backlink{display:inline-flex;align-items:center;gap:6px;font:600 .78rem var(--sans);letter-spacing:.08em;text-transform:uppercase;text-decoration:none;margin-bottom:18px;min-height:44px}
+.backlink:hover{color:var(--accent)}
+.art h1{font:600 clamp(2.2rem,6vw,3.9rem)/1.06 var(--serif);letter-spacing:-.02em;margin:.2em 0;outline:0}
+.dek{font-size:clamp(1.15rem,2.4vw,1.4rem);line-height:1.4}
+.note{font:.85rem var(--sans);border-left:3px solid var(--accent);padding-left:10px;color:var(--muted)}
+.byline{border-block:1px solid var(--rule);padding:10px 0;margin:18px 0 6px}
+.byline.meta{font-size:.82rem}
+.prose{max-width:65ch;margin:28px auto 0;font-size:1.2rem;line-height:1.7}
+.prose p:first-child::first-letter{float:left;font:600 4.1rem/.82 var(--serif);padding:6px 10px 0 0;color:var(--accent)}
+.prose ol{padding-left:1.3em}.prose li{margin:.35em 0}
+.pending{max-width:65ch;margin:28px auto 0;border:1px dashed var(--muted);padding:28px 24px;background:#fff}
+.pending h2{font:600 1.35rem var(--serif);margin:0 0 .3em}.pending p{margin:.3em 0;color:var(--muted)}
+.thanks{max-width:65ch;margin:44px auto 0;padding-top:20px;border-top:3px double var(--ink)}
+.thanks p{margin:0 0 14px;font-style:italic}.thanks .nm{color:var(--accent)}
+.thanks .row{display:flex;flex-wrap:wrap;gap:8px}
+.related{max-width:1200px;margin:56px auto 0}
+.rgrid{list-style:none;margin:0;padding:0;display:grid;gap:22px;grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+.list{list-style:none;margin:20px 0 0;padding:0;display:grid;gap:22px;grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+
+#view.in{animation:fade .5s ease both}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}}
+
+/* ----- opening-ceremony choreography (--k scales every delay) ----- */
+#paper{--k:1}#paper.quick{--k:.5}
+#paper.enter .edbar,#paper.enter .tag{animation:fade calc(1s*var(--k)) ease both;animation-delay:calc(1.1s*var(--k))}
+#paper.enter .word{animation:mast calc(1.5s*var(--k)) var(--ease) both;animation-delay:calc(.45s*var(--k))}
+@keyframes mast{from{opacity:0;letter-spacing:.32em;transform:scale(1.03)}to{opacity:1}}
+#paper.enter nav{animation:rule calc(1.2s*var(--k)) var(--ease) both;animation-delay:calc(.9s*var(--k))}
+@keyframes rule{from{clip-path:inset(0 50% 0 50%)}to{clip-path:inset(0)}}
+#paper.enter .kicker.ed{animation:fade calc(.9s*var(--k)) ease both;animation-delay:calc(1.25s*var(--k))}
+#paper.enter .greet{animation:wipe calc(1.3s*var(--k)) var(--ease) both;animation-delay:calc(1.4s*var(--k))}
+@keyframes wipe{from{clip-path:inset(-10% 100% -30% -2%);opacity:.2}to{clip-path:inset(-10% -5% -30% -2%);opacity:1}}
+#paper.enter .from{animation:fade calc(1s*var(--k)) ease both;animation-delay:calc(2s*var(--k))}
+#paper.enter .q{animation:fade calc(1s*var(--k)) ease both;animation-delay:calc(2.4s*var(--k))}
+#paper.enter .tools,#paper.enter .resume{animation:fade calc(1s*var(--k)) ease both;animation-delay:calc(2.6s*var(--k))}
+#paper.enter .scard{animation:pop calc(.8s*var(--k)) var(--ease) both;animation-delay:calc((2.7s + var(--i)*.11s)*var(--k))}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .scard:hover,.scard:hover .plate::before,.scard:hover .plate .big{transform:none}
+  .cur::before{animation:none}
+}
+</style>
+</head>
+<body>
+
+<div id="progress" aria-hidden="true"></div>
+
+<!-- =============== INTRO =============== -->
+<section id="intro" aria-label="Welcome to ShawarmaNYPost">
+  <div class="half t"></div><div class="half b"></div><div class="seam"></div>
+  <div class="stage">
+    <p class="sr">Hello. Welcome to ShawarmaNYPost.</p>
+    <p class="line" id="line" aria-hidden="true"><span id="typed"></span></p>
+
+    <div class="formwrap" id="formwrap">
+      <form id="nameform" novalidate autocomplete="off">
+        <label for="name" class="sr">What's your name? Enter the name you'd like us to greet you with.</label>
+        <div class="bubble blank" id="bubble">
+          <input id="name" name="display-name" type="text" maxlength="40" placeholder="What's your name?"
+                 autocomplete="off" autocapitalize="words" spellcheck="false" enterkeyhint="go"
+                 aria-describedby="nmsg nhint">
+          <button type="submit" class="go" aria-label="Continue to the newspaper">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </div>
+        <p class="msg" id="nmsg" role="status" aria-live="polite"></p>
+        <p class="hint" id="nhint">Press Enter to continue</p>
+      </form>
+    </div>
+    <button type="button" class="back" id="introBack" hidden>Back to the newspaper</button>
+  </div>
+</section>
+
+<!-- =============== NEWSPAPER =============== -->
+<div id="paper">
+  <a class="skip" href="#main" id="skip">Skip to content</a>
+
+  <div class="edbar"><div class="wrap">
+    <p class="who" id="who"></p>
+    <div class="acts">
+      <button type="button" class="link" id="changeName">Change name</button>
+      <button type="button" class="link" id="replay">Replay intro</button>
+    </div>
+  </div></div>
+
+  <header class="mast">
+    <p class="word"><a href="#/">ShawarmanyPost</a></p>
+    <p class="tag">The State of Shawarmany's newspaper</p>
+  </header>
+  <nav aria-label="Sections" class="wrap"><ul id="navlist"></ul></nav>
+
+  <main id="main" class="wrap" tabindex="-1"><div id="view"></div></main>
+
+  <footer class="wrap">
+    <p><a href="#/government">Government</a> · <a href="#/participation">Participation</a> · <a href="#/opinion">Opinion</a> · <a href="#/games">Games</a></p>
+    <p>Reporting, explainers and opinion are labeled on every story. Opinion pieces reflect the writer's view.</p>
+    <p>© 2026 ShawarmanyPost. A publication of the State of Shawarmany.</p>
+  </footer>
+</div>
+
+<noscript><p style="position:relative;z-index:200;background:#fff;padding:16px;margin:0;font:16px system-ui">ShawarmanyPost needs JavaScript turned on to open your edition.</p></noscript>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------------------------------------------------------------
+     DATA — taken from the repo (src/content/posts, lib/posts.ts, lib/games.ts)
+     --------------------------------------------------------------- */
+  var SECTIONS = {
+    government:    { name: 'Government',    blurb: 'How the governor, lawmakers, courts and budgets work for you.' },
+    participation: { name: 'Participation', blurb: 'Voting, hearings, petitions and other ways to take part.' },
+    opinion:       { name: 'Opinion',       blurb: 'Arguments and views from writers, labeled and kept apart from reporting.' }
+  };
+
+  var GAMES = [
+    { id: 'crossfloor', name: 'Crossfloor', pitch: 'A 5×5 mini crossword of civics words.', soon: false,
+      how: 'Fill the grid so each row and column answers its clue. Click a square or use the arrow keys to move; click the same square (or press Enter) to switch between Across and Down. Check marks wrong letters.' },
+    { id: 'caucus', name: 'Caucus', pitch: 'Sort 16 words into four caucuses.', soon: false,
+      how: 'Find four groups of four words that share something. Select four words and press Submit. You can make four mistakes.' },
+    { id: 'roll-call', name: 'Roll Call', pitch: 'A short quiz on how government works.', soon: false,
+      how: 'Answer each question, then read why. Your score comes at the end.' },
+    { id: 'districts', name: 'Districts', pitch: 'Draw fair district maps.', soon: true, how: '' }
+  ];
+
+  var STORIES = [
+    /* ---- FEATURED: no article content exists in the repo yet, so nothing is invented. ---- */
+    { id: '2026-class-election', title: '2026 Class Election', featured: true, pending: true,
+      subtitle: 'Featured in your edition. The reporting for this story has not been published yet.' },
+
+    { id: 'sample-governor-tristian-budget', title: 'Governor Tristian outlines budget priorities',
+      subtitle: 'The plan puts schools and road repairs first and now goes to the legislature.',
+      author: 'Pat Example', date: '2026-11-11', category: 'government', type: 'reporting', sample: true,
+      body: [
+        { p: 'Governor Tristian laid out budget priorities this week, with schools and road repairs at the top of the list.' },
+        { p: 'The proposal now goes to the legislature, where a committee will hold hearings before any vote. Residents can attend those hearings and speak during public comment.' }
+      ] },
+    { id: 'sample-opinion-hold-more-town-halls', title: 'Hold more town halls',
+      subtitle: 'Officials hear better when they meet people where they live.',
+      author: 'Riley Draft', date: '2026-11-10', category: 'government', type: 'opinion', sample: true,
+      body: [
+        { p: 'Decisions about schools, roads and budgets land harder when the people affected have been heard first. More town halls, held at different times and places, would help.' }
+      ] },
+    { id: 'sample-how-a-bill-becomes-law', title: 'How a bill becomes law',
+      subtitle: 'A plain-language walk through the usual path, from idea to signature.',
+      author: 'Sam Placeholder', date: '2026-11-09', category: 'government', type: 'explainer', sample: true,
+      body: [
+        { p: 'Most state legislatures follow a similar path.' },
+        { ol: ['A lawmaker introduces the bill.', 'A committee studies it, holds hearings and may change it.', 'The full chamber debates and votes.', 'The other chamber repeats the process.', 'The governor signs the bill or vetoes it.'] }
+      ] },
+    { id: 'sample-how-to-testify-at-a-public-hearing', title: 'How to testify at a public hearing',
+      subtitle: "You don't need to be an expert. You need to show up and say what you know.",
+      author: 'Sam Placeholder', date: '2026-11-08', category: 'participation', type: 'explainer', sample: true,
+      body: [
+        { p: 'Find the hearing notice, sign up to speak if a list is offered, and keep your remarks short. Lead with your main point, add one real example, and say what you want the committee to do.' }
+      ] },
+    { id: 'sample-voter-registration-drive', title: 'Volunteers plan a voter registration drive',
+      subtitle: 'Organizers say the goal is to make signing up quick and friendly.',
+      author: 'Pat Example', date: '2026-11-07', category: 'participation', type: 'reporting', sample: true,
+      body: [
+        { p: 'Volunteers are preparing a registration drive for next month. Organizers say they will bring forms, answer questions and help first-time voters check their status.' }
+      ] }
+  ];
+
+  var group = function (s) { return s.type === 'opinion' ? 'opinion' : s.category; };
+  var kicker = function (s) {
+    if (s.pending) return 'Featured story';
+    var c = SECTIONS[s.category].name;
+    return s.type === 'opinion' ? 'Opinion' : s.type === 'explainer' ? 'Explainer · ' + c : c;
+  };
+  var fmt = function (d) { return new Date(d + 'T00:00:00Z').toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' }); };
+  var words = function (s) {
+    return (s.body || []).reduce(function (n, b) { return n + (b.p ? b.p : b.ol.join(' ')).split(/\s+/).length; }, 0);
+  };
+  var mins = function (s) { return s.pending ? null : Math.max(1, Math.ceil(words(s) / 230)); };
+  var byId = function (id) { for (var i = 0; i < STORIES.length; i++) if (STORIES[i].id === id) return STORIES[i]; return null; };
+  var ordered = function () {
+    var feat = STORIES.filter(function (s) { return s.featured; });
+    var rest = STORIES.filter(function (s) { return !s.featured; }).sort(function (a, b) {
+      return (b.date > a.date ? 1 : b.date < a.date ? -1 : 0) || a.title.localeCompare(b.title);
+    });
+    return feat.concat(rest);
+  };
+
+  /* ---------------------------------------------------------------
+     HELPERS
+     --------------------------------------------------------------- */
+  var $ = function (s) { return document.querySelector(s); };
+  var root = document.documentElement;
+  var mem = {};
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return mem[k] == null ? null : mem[k]; } },
+    set: function (k, v) { mem[k] = v; try { localStorage.setItem(k, v); } catch (e) {} },
+    del: function (k) { delete mem[k]; try { localStorage.removeItem(k); } catch (e) {} }
+  };
+  var KEY = 'snyp.name', LAST = 'snyp.last';
+  var reduced = function () { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; };
+  var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+  var clean = function (v) { return String(v == null ? '' : v).replace(/[\u0000-\u001F\u007F]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40); };
+
+  // All DOM is built with textContent — the visitor's name is never parsed as HTML.
+  function h(tag, props) {
+    var e = document.createElement(tag), i, k, v;
+    if (props) for (k in props) {
+      v = props[k];
+      if (v == null || v === false) continue;
+      if (k === 'class') e.className = v;
+      else if (k === 'text') e.textContent = v;
+      else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), v);
+      else e.setAttribute(k, v === true ? '' : v);
+    }
+    for (i = 2; i < arguments.length; i++) {
+      var kids = [].concat(arguments[i]);
+      for (var j = 0; j < kids.length; j++) {
+        var c = kids[j];
+        if (c == null || c === false) continue;
+        e.append(c.nodeType ? c : document.createTextNode(c));
+      }
+    }
+    return e;
+  }
+
+  var name = clean(store.get(KEY));
+  if (!name) { store.del(KEY); }
+  var setState = function (s) { root.dataset.state = s; };
+
+  var intro = $('#intro'), paper = $('#paper'), view = $('#view'), main = $('#main');
+  var line = $('#line'), typed = $('#typed'), formwrap = $('#formwrap'), form = $('#nameform');
+  var input = $('#name'), bubble = $('#bubble'), nmsg = $('#nmsg'), introBack = $('#introBack');
+
+  /* ---------------------------------------------------------------
+     NAV + EDITION BAR
+     --------------------------------------------------------------- */
+  var NAV = [['Home', '#/', 'home'], ['All stories', '#/stories', 'stories'], ['Government', '#/government', 'government'],
+             ['Participation', '#/participation', 'participation'], ['Opinion', '#/opinion', 'opinion'], ['Games', '#/games', 'games']];
+  $('#navlist').replaceChildren.apply($('#navlist'), NAV.map(function (n) {
+    return h('li', null, h('a', { href: n[1], 'data-nav': n[2] }, n[0]));
+  }));
+  function setNav(key) {
+    document.querySelectorAll('#navlist a').forEach(function (a) {
+      if (a.dataset.nav === key) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+  }
+  function drawWho() {
+    var d = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    $('#who').replaceChildren(document.createTextNode(d + ' · Reading as '), h('strong', { text: name }));
+  }
+
+  /* ---------------------------------------------------------------
+     CARDS
+     --------------------------------------------------------------- */
+  function plate(s) {
+    if (s.pending) return h('div', { class: 'plate p-feat', 'aria-hidden': 'true' }, h('span', { class: 'big', text: '2026' }));
+    var g = group(s);
+    return h('div', { class: 'plate ' + (g === 'government' ? 'p-gov' : g === 'participation' ? 'p-par' : 'p-op'), 'aria-hidden': 'true' });
+  }
+  function metaLine(s) {
+    var m = mins(s);
+    return h('p', { class: 'smeta' },
+      h('span', { text: m ? m + ' min read' : 'Reporting in progress' }),
+      s.date ? h('span', { text: fmt(s.date) }) : null,
+      s.author ? h('span', { text: 'By ' + s.author }) : null);
+  }
+  function storyCard(s, i, feat) {
+    return h('li', { class: 'scard' + (feat ? ' feat' : ''), style: '--i:' + i },
+      plate(s),
+      h('div', { class: 'sbody' },
+        feat ? h('span', { class: 'flag', text: 'Featured story' }) : null,
+        h('p', { class: 'kicker' + (s.type === 'opinion' ? ' op' : ''), text: feat ? 'Your edition’s lead' : kicker(s) }, s.sample ? h('span', { class: 'badge', text: 'Sample' }) : null),
+        h('h3', null, h('a', { href: '#/post/' + s.id }, s.title)),
+        h('p', { class: 'sub', text: s.subtitle }),
+        metaLine(s),
+        h('span', { class: 'open', 'aria-hidden': 'true' }, 'Read story ', h('span', { text: '→' }))));
+  }
+
+  function selector(list) {
+    var filter = 'all', first = true;
+    var grid = h('ul', { class: 'sgrid', role: 'list' });
+    var status = h('p', { class: 'sr', role: 'status', 'aria-live': 'polite' });
+    var chips = [['all', 'All']].concat(Object.keys(SECTIONS).map(function (k) { return [k, SECTIONS[k].name]; }));
+    var chipEls = chips.map(function (c) {
+      return h('button', { type: 'button', class: 'chip', 'aria-pressed': c[0] === 'all' ? 'true' : 'false', 'data-f': c[0],
+        onclick: function () { filter = c[0]; chipEls.forEach(function (e) { e.setAttribute('aria-pressed', e.dataset.f === filter ? 'true' : 'false'); }); draw(); } }, c[1]);
+    });
+    var pick = h('button', { type: 'button', class: 'chip surprise', onclick: function () {
+      var pool = list.filter(function (s) { return !s.pending; });
+      if (pool.length) location.hash = '#/post/' + pool[Math.floor(Math.random() * pool.length)].id;
+    } }, 'Pick one for me');
+    function draw() {
+      var items = list.filter(function (s) { return filter === 'all' || (!s.pending && group(s) === filter); });
+      grid.replaceChildren.apply(grid, items.map(function (s, i) { return storyCard(s, i, i === 0 && s.featured && filter === 'all'); }));
+      status.textContent = 'Showing ' + items.length + (items.length === 1 ? ' story' : ' stories');
+      if (!first) { grid.classList.remove('redraw'); void grid.offsetWidth; grid.classList.add('redraw'); }
+      first = false;
+    }
+    draw();
+    return [h('div', { class: 'tools', role: 'group', 'aria-label': 'Filter stories' }, chipEls, pick), status, grid];
+  }
+
+  function gameTiles(level) {
+    var H = 'h' + level;
+    return h('ul', { class: 'gtiles', role: 'list' }, GAMES.map(function (g) {
+      return h('li', { class: g.soon ? 'gt soon' : 'gt' }, h(H, { text: g.name }), h('p', { text: g.pitch }),
+        g.soon ? h('p', { class: 'kicker', text: 'Coming soon' }) : h('a', { class: 'btn pri', href: '/games/' + g.id + '/' }, 'Play ' + g.name));
+    }));
+  }
+
+  /* ---------------------------------------------------------------
+     VIEWS
+     --------------------------------------------------------------- */
+  function viewHome() {
+    var list = ordered(), last = byId(store.get(LAST));
+    var resume = last && !last.pending
+      ? h('a', { class: 'resume', href: '#/post/' + last.id }, h('span', { text: 'Continue reading:' }), h('strong', { text: last.title }), h('span', { 'aria-hidden': 'true', text: '→' })) : null;
+    return { title: 'Home', nav: 'home', focus: '.greet', node: h('div', null,
+      h('section', { class: 'hello' },
+        h('p', { class: 'kicker ed', text: 'Your personal edition' }),
+        h('h1', { class: 'greet', tabindex: '-1' }, 'Greetings, ', h('span', { class: 'nm', text: name }), '.'),
+        h('p', { class: 'from', text: 'Your edition is ready. The editors saved you a seat.' })),
+      h('section', { 'aria-labelledby': 'askq' },
+        h('h2', { class: 'q', id: 'askq', text: 'What would you like to catch up on today?' }),
+        resume, selector(list)),
+      h('section', { class: 'cols2' },
+        h('div', null, h('h2', { class: 'sec', text: 'Play' }), gameTiles(3),
+          h('p', { class: 'meta' }, 'More in ', h('a', { href: '#/government' }, 'Government'), ' · ', h('a', { href: '#/participation' }, 'Participation'), ' · ', h('a', { href: '#/opinion' }, 'Opinion'), ' · ', h('a', { href: '#/stories' }, 'Browse all stories'))))) };
+  }
+
+  function viewStories() {
+    var list = ordered();
+    return { title: 'All stories', nav: 'stories', focus: 'h1', node: h('div', null,
+      h('h1', { class: 'sech', tabindex: '-1', text: 'All stories' }),
+      h('p', { class: 'sub', text: 'Everything in your edition, newest first.' }),
+      h('ol', { class: 'index' }, list.map(function (s) {
+        return h('li', null, h('div', null,
+          h('p', { class: 'kicker' + (s.type === 'opinion' ? ' op' : ''), text: kicker(s) }, s.sample ? h('span', { class: 'badge', text: 'Sample' }) : null),
+          h('h2', null, h('a', { href: '#/post/' + s.id }, s.title)),
+          h('p', { class: 'sub', text: s.subtitle }),
+          h('p', { class: 'meta', text: [s.date ? fmt(s.date) : null, mins(s) ? mins(s) + ' min read' : 'Reporting in progress'].filter(Boolean).join(' · ') })));
+      }))) };
+  }
+
+  function viewSection(key) {
+    var s = SECTIONS[key];
+    var list = ordered().filter(function (x) { return !x.pending && group(x) === key; });
+    return { title: s.name, nav: key, focus: 'h1', node: h('div', null,
+      h('h1', { class: 'sech', tabindex: '-1', text: s.name }), h('p', { class: 'sub', text: s.blurb }),
+      list.length
+        ? h('ul', { class: 'list', role: 'list' }, list.map(function (x, i) { return storyCard(x, i, false); }))
+        : h('div', { class: 'empty' }, h('h2', { text: 'No ' + s.name + (key === 'opinion' ? ' pieces' : ' stories') + ' yet.' }),
+            h('p', { text: 'Check back soon, or play today’s puzzles.' }), h('p', null, h('a', { class: 'btn pri', href: '#/games' }, 'Play today’s puzzles')))) };
+  }
+
+  function viewGames() {
+    return { title: 'Games', nav: 'games', focus: 'h1', node: h('div', null,
+      h('h1', { class: 'sech', tabindex: '-1', text: 'Games' }), h('p', { class: 'sub', text: 'Short civic puzzles. A few minutes each.' }),
+      gameTiles(2),
+      h('h2', { class: 'sec', text: 'How to play' }),
+      GAMES.filter(function (g) { return !g.soon; }).map(function (g) {
+        return h('details', { class: 'how' }, h('summary', { text: g.name }), h('p', { text: g.how }));
+      })) };
+  }
+
+  function viewPost(id) {
+    var s = byId(id);
+    if (!s) return viewNotFound();
+    if (!s.pending) store.set(LAST, s.id);
+    var m = mins(s);
+    var rel = ordered().filter(function (x) { return x.id !== s.id; }).sort(function (a, b) {
+      return (!b.pending && s.category && group(b) === group(s) ? 1 : 0) - (!a.pending && s.category && group(a) === group(s) ? 1 : 0);
+    }).slice(0, 3);
+    var body = s.pending
+      ? h('div', { class: 'pending' }, h('h2', { text: 'This story is on its way.' }),
+          h('p', { text: 'The reporting for the 2026 Class Election has not been added to this edition yet. Nothing has been published here, so there is nothing to show.' }),
+          h('p', { text: 'In the meantime, the rest of your edition is a click away.' }))
+      : h('div', { class: 'prose' }, s.body.map(function (b) { return b.p ? h('p', { text: b.p }) : h('ol', null, b.ol.map(function (t) { return h('li', { text: t }); })); }));
+    return { title: s.title, nav: s.category ? group(s) : 'home', focus: 'h1', progress: true, node: h('div', null,
+      s.sample ? h('p', { class: 'banner', text: 'Sample article for development. Delete before publishing.' }) : null,
+      h('article', { class: 'art' },
+        h('a', { class: 'backlink', href: '#/' }, h('span', { 'aria-hidden': 'true', text: '←' }), 'Back to your edition'),
+        h('p', { class: 'kicker' + (s.type === 'opinion' ? ' op' : ''), text: kicker(s) }),
+        h('h1', { class: s.type === 'opinion' ? 'it' : '', tabindex: '-1', text: s.title }),
+        h('p', { class: 'dek', text: s.subtitle }),
+        h('p', { class: 'meta byline', text: s.pending ? 'Reporting in progress' : 'By ' + s.author + ' · ' + fmt(s.date) + ' · ' + m + ' min read' }),
+        s.type === 'opinion' ? h('p', { class: 'note', text: 'Opinion pieces reflect the writer’s view, not ShawarmanyPost’s reporting.' }) : null,
+        body,
+        h('div', { class: 'thanks' },
+          h('p', null, 'Thanks for reading, ', h('span', { class: 'nm', text: name }), '.'),
+          h('div', { class: 'row' }, h('a', { class: 'btn pri', href: '#/' }, 'Back to your edition'), h('a', { class: 'btn', href: '#/stories' }, 'Browse all stories'), h('a', { class: 'btn', href: '#/games' }, 'Play a puzzle')))),
+      rel.length ? h('section', { class: 'related' }, h('h2', { class: 'sec', text: 'Keep reading' }),
+        h('ul', { class: 'rgrid', role: 'list' }, rel.map(function (x, i) { return storyCard(x, i, false); }))) : null) };
+  }
+
+  function viewNotFound() {
+    return { title: 'Not found', nav: '', focus: 'h1', node: h('div', { class: 'empty' }, h('h1', { tabindex: '-1', style: 'font:600 1.6rem var(--serif);margin:0 0 .3em', text: 'We couldn’t find that page.' }),
+      h('p', null, h('a', { class: 'btn pri', href: '#/' }, 'Back to your edition'))) };
+  }
+
+  /* ---------------------------------------------------------------
+     ROUTER
+     --------------------------------------------------------------- */
+  var progress = $('#progress'), progressOn = false;
+  function onScroll() {
+    if (!progressOn) return;
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    progress.style.transform = 'scaleX(' + (max > 0 ? Math.min(1, window.scrollY / max) : 0) + ')';
+  }
+  var ticking = false;
+  window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(function () { ticking = false; onScroll(); }); } }, { passive: true });
+
+  function resolve() {
+    var parts = location.hash.replace(/^#\/?/, '').split('/');
+    var a = parts[0], b = parts.slice(1).join('/');
+    if (a === '' || a === 'main') return viewHome();
+    if (a === 'stories') return viewStories();
+    if (a === 'games') return viewGames();
+    if (SECTIONS[a]) return viewSection(a);
+    if (a === 'post' && b) return viewPost(decodeURIComponent(b));
+    return viewNotFound();
+  }
+
+  function render(opts) {
+    opts = opts || {};
+    var v = resolve();
+    view.replaceChildren(v.node);
+    document.title = v.title === 'Home' ? 'ShawarmanyPost' : v.title + ' · ShawarmanyPost';
+    setNav(v.nav);
+    drawWho();
+    progressOn = !!v.progress;
+    progress.classList.toggle('on', progressOn);
+    progress.style.transform = 'scaleX(0)';
+    window.scrollTo(0, 0);
+    if (!opts.initial) {
+      view.classList.remove('in'); void view.offsetWidth; view.classList.add('in');
+    }
+    if (opts.focus) { var f = view.querySelector(v.focus); if (f) f.focus({ preventScroll: true }); }
+  }
+
+  window.addEventListener('hashchange', function () {
+    if (root.dataset.state === 'paper') render({ focus: true });
+  });
+  $('#skip').addEventListener('click', function (e) { e.preventDefault(); main.focus({ preventScroll: false }); });
+
+  /* ---------------------------------------------------------------
+     INTRO — typewriter, name input
+     --------------------------------------------------------------- */
+  var LINE = 'Hello. Welcome to ShawarmaNYPost.';
+  var chars = [], cursor = h('span', { class: 'cur', 'aria-hidden': 'true' });
+  var introRun = 0, typing = false, skipNow = null, busy = false;
+
+  function buildLine() {
+    typed.replaceChildren(); chars = [];
+    LINE.split(' ').forEach(function (word, wi, arr) {
+      var w = h('span', { class: 'w' });
+      word.split('').forEach(function (ch) { var c = h('span', { class: 'c', text: ch }); w.append(c); chars.push(c); });
+      typed.append(w);
+      if (wi < arr.length - 1) { var sp = h('span', { class: 'c', text: ' ' }); typed.append(sp); chars.push(sp); }
+    });
+    typed.prepend(cursor);
+  }
+  function placeCursor(i) { if (i < 0) typed.prepend(cursor); else chars[i].after(cursor); }
+  function showAllChars() { chars.forEach(function (c) { c.classList.add('on'); }); placeCursor(chars.length - 1); }
+  function pause(ms) {
+    return new Promise(function (resolve) {
+      var t = setTimeout(done, ms);
+      function done() { clearTimeout(t); if (skipNow === done) skipNow = null; resolve(); }
+      skipNow = done;
+    });
+  }
+
+  function showForm() {
+    formwrap.classList.add('show');
+    form.removeAttribute('inert');
+    setTimeout(function () { try { input.focus({ preventScroll: true }); input.select(); } catch (e) {} }, reduced() ? 0 : 500);
+  }
+
+  // mode: 'first' | 'replay' | 'rename'
+  async function startIntro(mode) {
+    var my = ++introRun;
+    busy = false;
+    buildLine();
+    formwrap.classList.remove('show'); form.setAttribute('inert', '');
+    input.value = name || ''; bubble.classList.toggle('blank', !input.value.trim()); nmsg.textContent = ''; input.removeAttribute('aria-invalid');
+    introBack.hidden = !name;
+    line.classList.remove('typing');
+
+    if (root.dataset.state === 'paper') {                     // closing the newspaper back into darkness
+      intro.style.setProperty('--hd', reduced() ? '0s' : '.95s');
+      intro.classList.remove('leaving');
+      intro.classList.add('snap', 'is-open');
+      setState('cover');
+      void intro.offsetWidth;
+      intro.classList.remove('snap');
+      intro.classList.remove('is-open');
+      await sleep(reduced() ? 0 : 1000);
+      if (my !== introRun) return;
+      setState('intro');
+      window.scrollTo(0, 0);
+    } else {
+      intro.classList.remove('leaving', 'is-open');
+    }
+
+    if (mode === 'rename' || reduced()) {
+      showAllChars();
+      await sleep(reduced() ? 0 : 350);
+      if (my !== introRun) return;
+      showForm();
+      return;
+    }
+
+    placeCursor(-1);
+    await pause(1500);                                         // the dark beat
+    if (my !== introRun) return;
+    typing = true; line.classList.add('typing');
+    for (var i = 0; i < chars.length; i++) {
+      if (my !== introRun) { typing = false; return; }
+      chars[i].classList.add('on'); placeCursor(i);
+      var ch = LINE[i], d = 62 + Math.random() * 46;
+      if (ch === ' ') d = 120;
+      if (ch === '.') d = 720;                                  // the pause after "Hello."
+      if (!typing) continue;
+      await pause(d);
+    }
+    typing = false; line.classList.remove('typing');
+    if (my !== introRun) return;
+    await pause(900);
+    if (my !== introRun) return;
+    showForm();
+  }
+
+  // click / tap / key during the typewriter finishes it instantly
+  function skipTyping() {
+    if (!typing) return;
+    typing = false;
+    showAllChars();
+    line.classList.remove('typing');
+    if (skipNow) skipNow();
+  }
+  intro.addEventListener('pointerdown', function (e) { if (!e.target.closest('form,button')) skipTyping(); });
+  document.addEventListener('keydown', function (e) {
+    if (root.dataset.state !== 'intro') return;
+    if (typing && (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape')) { e.preventDefault(); skipTyping(); return; }
+    if (e.key === 'Escape' && name && !busy) { e.preventDefault(); openPaper(true); }
+  });
+
+  input.addEventListener('input', function () { bubble.classList.toggle('blank', !input.value.trim()); if (input.value.trim()) { nmsg.textContent = ''; input.removeAttribute('aria-invalid'); } });
+  introBack.addEventListener('click', function () { if (!busy) openPaper(true); });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (busy) return;
+    var v = clean(input.value);
+    if (!v) {
+      nmsg.textContent = 'Please tell us what to call you.';
+      input.setAttribute('aria-invalid', 'true');
+      bubble.classList.remove('shake'); void bubble.offsetWidth; bubble.classList.add('shake');
+      input.focus();
+      return;
+    }
+    name = v; store.set(KEY, v);
+    openPaper(false);
+  });
+
+  /* ---------------------------------------------------------------
+     OPENING CEREMONY — the seam of light, the halves part, the paper unfolds
+     --------------------------------------------------------------- */
+  async function openPaper(quick) {
+    busy = true; introRun++;                                    // cancels any running typewriter
+    var instant = reduced();
+    intro.style.setProperty('--hd', instant ? '0s' : quick ? '.7s' : '1.25s');
+    setState('opening');
+    render({ initial: true });
+    paper.classList.remove('enter', 'unfold', 'quick');
+    void paper.offsetWidth;
+    if (!instant) { paper.classList.add('enter', 'unfold'); if (quick) paper.classList.add('quick'); }
+    intro.classList.add('leaving');
+    await sleep(instant ? 0 : quick ? 120 : 450);
+    intro.classList.add('is-open');
+    await sleep(instant ? 0 : quick ? 800 : 1700);
+    setState('paper');
+    intro.classList.remove('leaving', 'is-open');
+    paper.classList.remove('unfold');
+    window.scrollTo(0, 0);
+    var g = view.querySelector('.greet, h1'); if (g) g.focus({ preventScroll: true });
+    setTimeout(function () { paper.classList.remove('enter', 'quick'); }, quick ? 3200 : 5200);
+    busy = false;
+  }
+
+  $('#changeName').addEventListener('click', function () { if (location.hash !== '#/' && location.hash !== '') location.hash = '#/'; startIntro('rename'); });
+  $('#replay').addEventListener('click', function () { if (location.hash !== '#/' && location.hash !== '') location.hash = '#/'; startIntro('replay'); });
+
+  /* ---------------------------------------------------------------
+     BOOT
+     --------------------------------------------------------------- */
+  if (name) {
+    setState('paper');
+    render({ initial: true });
+    if (!reduced()) {                                           // returning visitor: straight in, with a short reveal
+      paper.classList.add('enter', 'quick');
+      setTimeout(function () { paper.classList.remove('enter', 'quick'); }, 3200);
+    }
+  } else {
+    setState('intro');
+    startIntro('first');
+  }
+})();
+</script>
+</body>
+</html>
